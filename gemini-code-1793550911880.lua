@@ -1,5 +1,5 @@
--- Language: Lua (Luau) | Pro Hub | ProScript v8.1 (Mobile Optimized Edition)
--- มีปุ่มลอยสำหรับมือถือ | ล็อคเป้าหัวแม่นยำ | UI สวยงามครบทุกฟังก์ชัน
+-- Language: Lua (Luau) | Pro Hub | ProScript v8.2 (Production Stable Edition)
+-- Home / ปุ่ม PRO = เปิด/ปิด UI | คลิกขวาค้าง = ล็อคเป้าหัวแม่นยำ 100%
 
 local Players          = game:GetService("Players")
 local RunService       = game:GetService("RunService")
@@ -9,7 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Camera           = workspace.CurrentCamera
 local LocalPlayer      = Players.LocalPlayer
 
--- โหลด Remotes จากข้อมูล Dump ของเกม
+-- โหลด Remotes อย่างปลอดภัยจากข้อมูล Dump
 local Remotes, PickupLootRemote, UseItemRemote, BagAllToStashRemote
 pcall(function()
     Remotes = ReplicatedStorage:WaitForChild("Remotes", 3)
@@ -344,7 +344,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 ----------------------------------------------------------------
--- MOBILE OPTIMIZED SIDEBAR GUI (พร้อมปุ่มลอยสำหรับมือถือ)
+-- MOBILE & PC OPTIMIZED SIDEBAR GUI (พร้อมปุ่มลอย & เครดิต)
 ----------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ProHubMobile"
@@ -366,7 +366,7 @@ local ToggleStroke = Instance.new("UIStroke", ToggleBtn)
 ToggleStroke.Color = T.ACCENT
 ToggleStroke.Thickness = 1.5
 
-local WIN_W, WIN_H = 520, 420
+local WIN_W, WIN_H = 520, 440
 local Window = Instance.new("Frame")
 Window.Size = UDim2.new(0, WIN_W, 0, WIN_H)
 Window.Position = UDim2.new(0.5, -WIN_W/2, 0.5, -WIN_H/2)
@@ -404,7 +404,7 @@ local TitleLbl = Instance.new("TextLabel")
 TitleLbl.Size = UDim2.new(0, 300, 1, 0)
 TitleLbl.Position = UDim2.new(0, 30, 0, 0)
 TitleLbl.BackgroundTransparency = 1
-TitleLbl.Text = "PRO HUB  •  WarZ Mobile v8.1"
+TitleLbl.Text = "PRO HUB  •  WarZ v8.2"
 TitleLbl.TextColor3 = T.TEXT
 TitleLbl.Font = Enum.Font.GothamBold
 TitleLbl.TextSize = 13
@@ -631,7 +631,7 @@ local function makeButton(txt, callback, parent)
     btn.MouseButton1Click:Connect(callback)
 end
 
--- เพิ่มส่วนประกอบเมนูทั้งหมด
+-- เพิ่มส่วนประกอบเมนูทั้งหมดครบถ้วน
 makeToggle("เปิดใช้งานล็อคเป้า (เล็ง/คลิกขวา)", CFG.AimbotEnabled, function(v) CFG.AimbotEnabled = v end, pageAim)
 makeToggle("แสดงวงกลม FOV", CFG.ShowFOVCircle, function(v) CFG.ShowFOVCircle = v end, pageAim)
 makeSlider("ปรับขนาด FOV", 20, 400, CFG.AimbotFOV, 5, function(v) CFG.AimbotFOV = v end, pageAim)
