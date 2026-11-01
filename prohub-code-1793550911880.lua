@@ -1,5 +1,5 @@
--- Language: Lua (Luau) | Pro Hub | ProScript v8.2 (Production Stable Edition)
--- Home / ปุ่ม PRO = เปิด/ปิด UI | คลิกขวาค้าง = ล็อคเป้าหัวแม่นยำ 100%
+-- Language: Lua (Luau) | Pro Hub | ProScript v8.3 (Universal Mobile & PC ESP Edition)
+-- Home / ปุ่ม PRO = เปิด/ปิด UI | คลิกขวาค้าง/เล็ง = ล็อคเป้าหัวแม่นยำ 100%
 
 local Players          = game:GetService("Players")
 local RunService       = game:GetService("RunService")
@@ -20,7 +20,7 @@ pcall(function()
     end
 end)
 
--- ธีมสี UI ดีไซน์พรีเมียม หรูหรา สบายตา
+-- ธีมสี UI พรีเมียม
 local T = {
     BG = Color3.fromRGB(13, 18, 15),
     SIDEBAR = Color3.fromRGB(10, 14, 12),
@@ -70,49 +70,94 @@ local CFG = {
 }
 
 ----------------------------------------------------------------
--- SAFE DRAWING SYSTEM
+-- UNIVERSAL GUI ESP SYSTEM (รองรับมือถือและ PC 100%)
 ----------------------------------------------------------------
-local function D_Square(filled, thick)
-    local ok, d = pcall(function()
-        local obj = Drawing.new("Square")
-        obj.Visible = false; obj.Filled = filled or false
-        obj.Thickness = thick or 1; obj.Transparency = 1
-        return obj
-    end)
-    return ok and d or nil
+local ESPGui = Instance.new("ScreenGui")
+ESPGui.Name = "ProHub_UniversalESP"
+ESPGui.ResetOnSpawn = false
+pcall(function() ESPGui.Parent = game:GetService("CoreGui") end)
+if not ESPGui.Parent then ESPGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
+
+-- วงกลม FOV แบบ GUI รองรับมือถือ
+local fovFrame = Instance.new("Frame")
+fovFrame.Name = "FOVCircle"
+fovFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+fovFrame.BackgroundTransparency = 1
+fovFrame.Visible = false
+fovFrame.Parent = ESPGui
+
+local fovStroke = Instance.new("UIStroke", fovFrame)
+fovStroke.Color = CFG.ColorFOV
+fovStroke.Thickness = 1.5
+
+local espPool = {}
+
+local function createEspElements(p)
+    if espPool[p] then return end
+    local holder = Instance.new("Folder")
+    holder.Name = p.Name
+    holder.Parent = ESPGui
+
+    -- Box (Frame)
+    local box = Instance.new("Frame")
+    box.BackgroundTransparency = 1
+    box.Visible = false
+    box.Parent = holder
+    local boxStroke = Instance.new("UIStroke", box)
+    boxStroke.Color = CFG.ColorEnemy
+    boxStroke.Thickness = 1.5
+
+    -- Name Text
+    local name = Instance.new("TextLabel")
+    name.BackgroundTransparency = 1
+    name.Size = UDim2.new(0, 150, 0, 20)
+    name.AnchorPoint = Vector2.new(0.5, 1)
+    name.TextColor3 = CFG.ColorText
+    name.TextStrokeTransparency = 0
+    name.TextSize = 12
+    name.Font = Enum.Font.GothamBold
+    name.Visible = false
+    name.Parent = holder
+
+    -- Distance Text
+    local dist = Instance.new("TextLabel")
+    dist.BackgroundTransparency = 1
+    dist.Size = UDim2.new(0, 150, 0, 15)
+    dist.AnchorPoint = Vector2.new(0.5, 1)
+    dist.TextColor3 = Color3.fromRGB(180, 180, 180)
+    dist.TextStrokeTransparency = 0
+    dist.TextSize = 10
+    dist.Font = Enum.Font.Gotham
+    dist.Visible = false
+    dist.Parent = holder
+
+    -- HP Bar Background
+    local hpBg = Instance.new("Frame")
+    hpBg.BackgroundColor3 = Color3.new(0,0,0)
+    hpBg.BorderSizePixel = 0
+    hpBg.Visible = false
+    hpBg.Parent = holder
+
+    -- HP Bar Fill
+    local hpBar = Instance.new("Frame")
+    hpBar.BackgroundColor3 = CFG.ColorHP
+    hpBar.BorderSizePixel = 0
+    hpBar.Visible = false
+    hpBar.Parent = hpBg
+
+    espPool[p] = {folder = holder, box = box, stroke = boxStroke, name = name, dist = dist, hpBg = hpBg, hpBar = hpBar}
 end
 
-local function D_Text(size)
-    local ok, d = pcall(function()
-        local obj = Drawing.new("Text")
-        obj.Visible = false; obj.Size = size or 13
-        obj.Outline = true; obj.OutlineColor = Color3.new(0,0,0)
-        obj.Transparency = 1; obj.Center = true
-        return obj
-    end)
-    return ok and d or nil
+local function removeEspElements(p)
+    if espPool[p] then
+        pcall(function() espPool[p].folder:Destroy() end)
+        espPool[p] = nil
+    end
 end
 
-local function D_Line()
-    local ok, d = pcall(function()
-        local obj = Drawing.new("Line")
-        obj.Visible = false; obj.Thickness = 1; obj.Transparency = 1
-        return obj
-    end)
-    return ok and d or nil
-end
-
-local function D_Circle()
-    local ok, d = pcall(function()
-        local obj = Drawing.new("Circle")
-        obj.Visible = false; obj.Thickness = 1; obj.Transparency = 1; obj.Filled = false
-        return obj
-    end)
-    return ok and d or nil
-end
-
-local fovCircle = D_Circle()
-if fovCircle then fovCircle.Color = CFG.ColorFOV end
+for _, p in ipairs(Players:GetPlayers()) do if p ~= LocalPlayer then createEspElements(p) end end
+Players.PlayerAdded:Connect(function(p) if p ~= LocalPlayer then createEspElements(p) end end)
+Players.PlayerRemoving:Connect(removeEspElements)
 
 ----------------------------------------------------------------
 -- UTILS & HELPERS
@@ -140,75 +185,6 @@ local function isEnemy(p)
     if not CFG.AimbotTeamCheck then return true end
     return p.Team ~= LocalPlayer.Team
 end
-
-----------------------------------------------------------------
--- ESP POOL
-----------------------------------------------------------------
-local pool = {}
-local function alloc(p)
-    if pool[p] then return end
-    pool[p] = {
-        box = D_Square(false, 1), name = D_Text(13), dist = D_Text(11),
-        hpBg = D_Square(true, 1), hpBar = D_Square(true, 1), tracer = D_Line(),
-    }
-end
-
-local function free(p)
-    if not pool[p] then return end
-    for _, d in pairs(pool[p]) do pcall(function() if d then d:Remove() end end) end
-    pool[p] = nil
-end
-
-local function hideAll(e) if not e then return end; for _, d in pairs(e) do if d then d.Visible = false end end end
-
-local function renderPlayer(p, e)
-    local root, head, hum = getParts(p)
-    if not root or not hum or hum.Health <= 0 then hideAll(e) return end
-    local dist3D = (root.Position - Camera.CFrame.Position).Magnitude
-    if dist3D > CFG.ESPMaxDist then hideAll(e) return end
-    
-    local topSP, topOn = w2s(head.Position + Vector3.new(0, 0.7, 0))
-    local botSP, botOn = w2s(root.Position - Vector3.new(0, 3.0, 0))
-    if not topOn and not botOn then hideAll(e) return end
-    
-    local bH = math.max(math.abs(topSP.Y - botSP.Y), 1)
-    local bW = bH * 0.6
-    local bX = topSP.X - bW / 2
-    local col = isEnemy(p) and CFG.ColorEnemy or CFG.ColorTeammate
-    
-    if e.box then
-        e.box.Visible = CFG.ESPBox; e.box.Color = col
-        e.box.Position = Vector2.new(bX, topSP.Y); e.box.Size = Vector2.new(bW, bH)
-    end
-    if e.name then
-        e.name.Visible = CFG.ESPName; e.name.Color = CFG.ColorText
-        e.name.Text = p.Name; e.name.Position = Vector2.new(topSP.X, topSP.Y - 16)
-    end
-    if e.dist then
-        e.dist.Visible = CFG.ESPDistance
-        e.dist.Text = string.format("[%dm]", math.floor(dist3D/4))
-        e.dist.Position = Vector2.new(topSP.X, topSP.Y - 28)
-    end
-    
-    local hpR = hum.MaxHealth > 0 and math.clamp(hum.Health/hum.MaxHealth, 0, 1) or 0
-    if e.hpBg then
-        e.hpBg.Visible = CFG.ESPHealth; e.hpBg.Position = Vector2.new(bX - 6, topSP.Y); e.hpBg.Size = Vector2.new(3, bH)
-    end
-    if e.hpBar then
-        e.hpBar.Visible = CFG.ESPHealth; e.hpBar.Color = hpR > 0.4 and CFG.ColorHP or CFG.ColorHPLow
-        e.hpBar.Position = Vector2.new(bX - 6, topSP.Y + bH - bH * hpR)
-        e.hpBar.Size = Vector2.new(3, math.max(bH * hpR, 1))
-    end
-    if e.tracer then
-        e.tracer.Visible = CFG.ESPTracers; e.tracer.Color = CFG.ColorTracer
-        e.tracer.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
-        e.tracer.To = botSP
-    end
-end
-
-for _, p in ipairs(Players:GetPlayers()) do if p ~= LocalPlayer then alloc(p) end end
-Players.PlayerAdded:Connect(function(p) if p ~= LocalPlayer then alloc(p) end end)
-Players.PlayerRemoving:Connect(free)
 
 ----------------------------------------------------------------
 -- BACKGROUND TASKS (Auto Loot, Auto Heal, Soft Hitbox)
@@ -250,6 +226,7 @@ task.spawn(function()
             end
 
             if CFG.BulletSoft then
+                local enemyCount = 0
                 for _, p in ipairs(Players:GetPlayers()) do
                     if p ~= LocalPlayer and isEnemy(p) then
                         local _, head = getParts(p)
@@ -257,6 +234,8 @@ task.spawn(function()
                             head.Size = Vector3.new(4, 4, 4)
                             head.Transparency = 0.6
                             head.CanCollide = false
+                            enemyCount = enemyCount + 1
+                            if enemyCount > 15 then task.wait(0.05) end -- ป้องกันแลค
                         end
                     end
                 end
@@ -286,7 +265,7 @@ RunService.Stepped:Connect(function()
 end)
 
 ----------------------------------------------------------------
--- RENDER LOOP (Aimbot Head Lock on Right Click / Touch Aim)
+-- RENDER LOOP (ESP & Aimbot)
 ----------------------------------------------------------------
 local function isRightMouseDown()
     return UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) or UserInputService.TouchEnabled
@@ -294,11 +273,14 @@ end
 
 RunService.RenderStepped:Connect(function()
     local center = screenCenter()
-    if fovCircle then
-        fovCircle.Visible = CFG.ShowFOVCircle
-        fovCircle.Position = center
-        fovCircle.Radius = CFG.AimbotFOV
-        fovCircle.Color = CFG.ColorFOV
+    
+    -- อัปเดต FOV Circle
+    if fovFrame then
+        fovFrame.Visible = CFG.ShowFOVCircle
+        fovFrame.Position = UDim2.new(0, center.X, 0, center.Y)
+        local fovSize = CFG.AimbotFOV * 2
+        fovFrame.Size = UDim2.new(0, fovSize, 0, fovSize)
+        fovStroke.Color = CFG.ColorFOV
     end
 
     if CFG.SpeedEnabled and LocalPlayer.Character then
@@ -306,12 +288,76 @@ RunService.RenderStepped:Connect(function()
         if hum then hum.WalkSpeed = CFG.SpeedVal end
     end
 
-    if not CFG.ESPEnabled then
-        for _, e in pairs(pool) do hideAll(e) end
-    else
-        for p, e in pairs(pool) do renderPlayer(p, e) end
+    -- อัปเดต ESP ทุกเฟรมสำหรับมือถือและ PC
+    for p, e in pairs(espPool) do
+        local root, head, hum = getParts(p)
+        if not CFG.ESPEnabled or not root or not hum or hum.Health <= 0 then
+            e.box.Visible = false; e.name.Visible = false; e.dist.Visible = false; e.hpBg.Visible = false
+        else
+            local dist3D = (root.Position - Camera.CFrame.Position).Magnitude
+            if dist3D > CFG.ESPMaxDist then
+                e.box.Visible = false; e.name.Visible = false; e.dist.Visible = false; e.hpBg.Visible = false
+            else
+                local topSP, topOn = w2s(head.Position + Vector3.new(0, 0.7, 0))
+                local botSP, botOn = w2s(root.Position - Vector3.new(0, 3.0, 0))
+                
+                if not topOn and not botOn then
+                    e.box.Visible = false; e.name.Visible = false; e.dist.Visible = false; e.hpBg.Visible = false
+                else
+                    local bH = math.max(math.abs(topSP.Y - botSP.Y), 1)
+                    local bW = bH * 0.6
+                    local bX = topSP.X - bW / 2
+                    local col = isEnemy(p) and CFG.ColorEnemy or CFG.ColorTeammate
+
+                    -- Box
+                    if CFG.ESPBox then
+                        e.box.Visible = true
+                        e.box.Position = UDim2.new(0, bX, 0, topSP.Y)
+                        e.box.Size = UDim2.new(0, bW, 0, bH)
+                        e.stroke.Color = col
+                    else
+                        e.box.Visible = false
+                    end
+
+                    -- Name
+                    if CFG.ESPName then
+                        e.name.Visible = true
+                        e.name.Position = UDim2.new(0, topSP.X, 0, topSP.Y - 4)
+                        e.name.Text = p.Name
+                        e.name.TextColor3 = CFG.ColorText
+                    else
+                        e.name.Visible = false
+                    end
+
+                    -- Distance
+                    if CFG.ESPDistance then
+                        e.dist.Visible = true
+                        e.dist.Position = UDim2.new(0, topSP.X, 0, topSP.Y - 16)
+                        e.dist.Text = string.format("[%dm]", math.floor(dist3D/4))
+                    else
+                        e.dist.Visible = false
+                    end
+
+                    -- Health Bar
+                    if CFG.ESPHealth then
+                        local hpR = hum.MaxHealth > 0 and math.clamp(hum.Health/hum.MaxHealth, 0, 1) or 0
+                        e.hpBg.Visible = true
+                        e.hpBg.Position = UDim2.new(0, bX - 6, 0, topSP.Y)
+                        e.hpBg.Size = UDim2.new(0, 3, 0, bH)
+                        e.hpBar.Visible = true
+                        e.hpBar.BackgroundColor3 = hpR > 0.4 and CFG.ColorHP or CFG.ColorHPLow
+                        e.hpBar.Size = UDim2.new(1, 0, hpR, 0)
+                        e.hpBar.Position = UDim2.new(0, 0, 1 - hpR, 0)
+                    else
+                        e.hpBg.Visible = false
+                        e.hpBar.Visible = false
+                    end
+                end
+            end
+        end
     end
 
+    -- Aimbot Head Lock
     if CFG.AimbotEnabled and isRightMouseDown() then
         local bestTarget = nil
         local bestDist = CFG.AimbotFOV
@@ -322,8 +368,7 @@ RunService.RenderStepped:Connect(function()
                 if head and hum and hum.Health > 0 then
                     local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
                     if onScreen and screenPos.Z > 0 then
-                        local screenPoint2D = Vector2.new(screenPos.X, screenPos.Y)
-                        local d = (screenPoint2D - center).Magnitude
+                        local d = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
                         if d < bestDist then
                             bestDist = d
                             bestTarget = head
@@ -344,14 +389,13 @@ RunService.RenderStepped:Connect(function()
 end)
 
 ----------------------------------------------------------------
--- MOBILE & PC OPTIMIZED SIDEBAR GUI (พร้อมปุ่มลอย & เครดิต)
+-- MOBILE & PC OPTIMIZED SIDEBAR GUI
 ----------------------------------------------------------------
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ProHubMobile"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = game:GetService("CoreGui")
 
--- ปุ่มเปิด-ปิดลอยบนจอมือถือ (Floating Button)
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Size = UDim2.new(0, 48, 0, 48)
 ToggleBtn.Position = UDim2.new(0, 20, 0.3, 0)
@@ -404,14 +448,13 @@ local TitleLbl = Instance.new("TextLabel")
 TitleLbl.Size = UDim2.new(0, 300, 1, 0)
 TitleLbl.Position = UDim2.new(0, 30, 0, 0)
 TitleLbl.BackgroundTransparency = 1
-TitleLbl.Text = "PRO HUB  •  WarZ v8.2"
+TitleLbl.Text = "PRO HUB  •  WarZ v8.3"
 TitleLbl.TextColor3 = T.TEXT
 TitleLbl.Font = Enum.Font.GothamBold
 TitleLbl.TextSize = 13
 TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
 TitleLbl.Parent = TitleBar
 
--- ลากย้ายหน้าต่าง UI สำหรับมือถือและเมาส์
 local dragging, dragStart, startPos
 TitleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -438,7 +481,7 @@ CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.TextSize = 11
 CloseBtn.Parent = TitleBar
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
-CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() ESPGui:Destroy() end)
 
 local minimized = false
 local MinBtn = Instance.new("TextButton")
@@ -614,7 +657,7 @@ local function makeSlider(labelText, min, max, current, step, onChange, parent)
         if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then upd(i.Position.X) end
     end)
     UserInputService.InputEnded:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+        if i.UserInputType == Enum.MouseButton1 then dragging = false end
     end)
 end
 
@@ -631,15 +674,15 @@ local function makeButton(txt, callback, parent)
     btn.MouseButton1Click:Connect(callback)
 end
 
--- เพิ่มส่วนประกอบเมนูทั้งหมดครบถ้วน
+-- สร้างเมนูตัวเลือกทั้งหมดครบถ้วน
 makeToggle("เปิดใช้งานล็อคเป้า (เล็ง/คลิกขวา)", CFG.AimbotEnabled, function(v) CFG.AimbotEnabled = v end, pageAim)
 makeToggle("แสดงวงกลม FOV", CFG.ShowFOVCircle, function(v) CFG.ShowFOVCircle = v end, pageAim)
 makeSlider("ปรับขนาด FOV", 20, 400, CFG.AimbotFOV, 5, function(v) CFG.AimbotFOV = v end, pageAim)
 
 makeToggle("เปิดใช้งาน ESP", CFG.ESPEnabled, function(v) CFG.ESPEnabled = v end, pageESP)
 makeToggle("แสดงกรอบ 3D Box", CFG.ESPBox, function(v) CFG.ESPBox = v end, pageESP)
-makeToggle("แสดงเส้น Tracers", CFG.ESPTracers, function(v) CFG.ESPTracers = v end, pageESP)
 makeToggle("แสดงชื่อผู้เล่น", CFG.ESPName, function(v) CFG.ESPName = v end, pageESP)
+makeToggle("แสดงระยะทาง", CFG.ESPDistance, function(v) CFG.ESPDistance = v end, pageESP)
 makeToggle("แสดงพลังชีวิต HP", CFG.ESPHealth, function(v) CFG.ESPHealth = v end, pageESP)
 
 makeToggle("กระสุนตรง (No Spread)", CFG.BulletStraight, function(v) CFG.BulletStraight = v end, pageGun)
